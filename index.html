@@ -2,19 +2,14 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Dc gibi duzelltim ama</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>update #4</title>
 
 <style>
-* {
-  margin:0;
-  padding:0;
-  box-sizing:border-box;
-  font-family:Arial;
-}
-
 body {
-  background:#313338;
+  margin:0;
+  font-family:Arial;
+  background:#1e1f22;
   color:white;
   overflow:hidden;
 }
@@ -33,44 +28,51 @@ body {
   background:#2b2d31;
   padding:20px;
   border-radius:10px;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
 }
 
-input {
+input, button {
   padding:10px;
   margin:5px;
   border:none;
   border-radius:6px;
-  width:220px;
-  background:#1e1f22;
-  color:white;
 }
 
-button {
-  padding:10px;
-  border:none;
-  border-radius:6px;
-  background:#5865f2;
-  color:white;
-  cursor:pointer;
-  width:100%;
-}
+input {background:#1e1f22;color:white;}
+button {background:#5865f2;color:white;cursor:pointer;}
 
 /* CHAT */
 #chat {
   display:none;
   height:100vh;
   display:flex;
+}
+
+/* SIDEBAR */
+#sidebar {
+  width:80px;
+  background:#111214;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:10px;
+}
+
+.sideBtn {
+  margin:5px;
+  cursor:pointer;
+}
+
+/* MAIN */
+#main {
+  flex:1;
+  display:flex;
   flex-direction:column;
 }
 
 /* HEADER */
 #header {
-  padding:10px;
   background:#2b2d31;
-  font-weight:bold;
+  padding:10px;
 }
 
 /* MESSAGES */
@@ -80,7 +82,6 @@ button {
   padding:10px;
 }
 
-/* MESSAGE */
 .msg {
   display:flex;
   margin:10px 0;
@@ -93,31 +94,10 @@ button {
   margin-right:10px;
 }
 
-.content {
-  flex:1;
-}
-
-.username {
-  font-size:14px;
-  font-weight:bold;
-}
-
-.text {
-  font-size:15px;
-  margin-top:2px;
-  word-break:break-word;
-}
-
-/* COPY */
 .copyBtn {
-  margin-left:8px;
+  margin-left:10px;
+  font-size:20px;
   cursor:pointer;
-  font-size:20px; /* BÜYÜTTÜM */
-  opacity:0.7;
-}
-
-.copyBtn:hover {
-  opacity:1;
 }
 
 /* INPUT */
@@ -129,11 +109,6 @@ button {
 
 #msgInput {
   flex:1;
-  padding:10px;
-  border-radius:6px;
-  border:none;
-  background:#1e1f22;
-  color:white;
 }
 </style>
 </head>
@@ -143,21 +118,30 @@ button {
 <!-- LOGIN -->
 <div id="login">
   <div class="login-box">
-    <h3>Giriş Yap</h3>
-    <input id="username" placeholder="Kullanıcı adı">
-    <input type="file" id="avatarInput" accept="image/*">
+    <h3>Giriş</h3>
+    <input id="username" placeholder="Kullanıcı adı"><br>
+    <input type="file" id="avatarInput"><br>
     <button onclick="login()">Giriş</button>
   </div>
 </div>
 
 <!-- CHAT -->
 <div id="chat">
-  <div id="header"># sohbet</div>
-  <div id="messages"></div>
+  <div id="sidebar">
+    <div class="sideBtn" onclick="setRoom('global')">🌍</div>
+    <div class="sideBtn" onclick="addFriend()">➕</div>
+  </div>
 
-  <div id="inputArea">
-    <input id="msgInput" placeholder="Mesaj yaz...">
-    <button onclick="sendMsg()">Gönder</button>
+  <div id="main">
+    <div id="header"># global</div>
+    <div id="messages"></div>
+
+    <div id="inputArea">
+      <input type="file" id="fileInput" hidden>
+      <button onclick="fileInput.click()">📎</button>
+      <input id="msgInput" placeholder="Mesaj...">
+      <button onclick="sendMsg()">➤</button>
+    </div>
   </div>
 </div>
 
@@ -175,76 +159,112 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-let username = "";
-let avatar = "";
+let username="", avatar="", room="global";
+let friends = [];
 
-// HTML escape (preview engelle)
-function escapeHTML(text){
-  return text.replace(/</g,"&lt;").replace(/>/g,"&gt;");
+// HTML kontrol
+function containsHTML(str){
+  return /<[^>]*>/.test(str);
 }
 
-// LOGIN FIXED
-window.login = function() {
-  const name = document.getElementById("username").value;
-  const file = document.getElementById("avatarInput").files[0];
+// LOGIN
+window.login = function(){
+  const name = usernameInput.value;
+  const file = avatarInput.files[0];
 
   if(!name || !file) return alert("Eksik!");
 
   const reader = new FileReader();
-  reader.onload = e => {
+  reader.onload = e=>{
     username = name;
     avatar = e.target.result;
 
-    document.getElementById("login").style.display = "none";
-    document.getElementById("chat").style.display = "flex";
+    login.style.display="none";
+    chat.style.display="flex";
+
+    Notification.requestPermission();
 
     loadMessages();
   };
   reader.readAsDataURL(file);
 };
 
+// ROOM
+window.setRoom = function(r){
+  room = r;
+  messages.innerHTML="";
+  header.innerText="# "+r;
+  loadMessages();
+};
+
+// FRIEND
+window.addFriend = function(){
+  const f = prompt("Kullanıcı adı:");
+  if(f) friends.push(f);
+};
+
 // SEND
 window.sendMsg = function(){
-  const text = document.getElementById("msgInput").value;
-  if(!text) return;
+  const text = msgInput.value;
+  const file = fileInput.files[0];
 
-  push(ref(db,"messages"),{
-    username,
-    avatar,
-    text
-  });
+  if(!text && !file) return;
 
-  document.getElementById("msgInput").value="";
+  if(file){
+    const reader = new FileReader();
+    reader.onload = e=>{
+      push(ref(db,"messages"),{
+        username,avatar,room,
+        image:e.target.result,
+        text
+      });
+    };
+    reader.readAsDataURL(file);
+    fileInput.value="";
+  } else {
+    push(ref(db,"messages"),{
+      username,avatar,room,text
+    });
+  }
+
+  msgInput.value="";
 };
 
 // LOAD
 function loadMessages(){
-  const container = document.getElementById("messages");
-
   onChildAdded(ref(db,"messages"), snap=>{
     const msg = snap.val();
-    if(!msg) return;
+    if(!msg || msg.room!==room) return;
 
     const div = document.createElement("div");
     div.className="msg";
 
     div.innerHTML=`
       <img src="${msg.avatar}" class="avatar">
-      <div class="content">
-        <div>
-          <span class="username">${msg.username}</span>
-          <span class="copyBtn">📋</span>
-        </div>
-        <div class="text">${escapeHTML(msg.text)}</div>
+      <div>
+        <b>${msg.username}</b>
+        <span class="copyBtn">📋</span>
+        <div>${msg.text || ""}</div>
+        ${msg.image ? `<img src="${msg.image}" width="150">` : ""}
       </div>
     `;
 
     div.querySelector(".copyBtn").onclick = ()=>{
-      navigator.clipboard.writeText(msg.text);
+      navigator.clipboard.writeText(msg.text || "");
     };
 
-    container.appendChild(div);
-    container.scrollTop = container.scrollHeight;
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+
+    // 🔔 NORMAL BİLDİRİM
+    if(msg.username !== username && Notification.permission==="granted"){
+      new Notification(msg.username+": "+(msg.text||"📷"));
+    }
+
+    // ⚠️ HTML BİLDİRİM (SADECE GLOBAL)
+    if(room==="global" && containsHTML(msg.text||"")){
+      alert("⚠️ HTML kod mesajı geldi!");
+    }
   });
 }
 </script>
