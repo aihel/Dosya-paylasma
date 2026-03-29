@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chat App</title>
+
+<style>
+body {
+  margin:0;
+  font-family: Arial;
+  background:#0f172a;
+  color:white;
+}
+
+/* LOGIN */
+#login {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  height:100vh;
+}
+
+input {
+  padding:10px;
+  margin:5px;
+  border-radius:10px;
+  border:none;
+}
+
+button {
+  padding:10px 20px;
+  border:none;
+  border-radius:10px;
+  background:#22c55e;
+  color:white;
+  cursor:pointer;
+}
+
+/* CHAT */
+#chat {
+  display:none;
+  height:100vh;
+  flex-direction:column;
+}
+
+#messages {
+  flex:1;
+  overflow:auto;
+  padding:10px;
+}
+
+/* MESSAGE */
+.msg {
+  display:flex;
+  align-items:flex-start;
+  background:#1e293b;
+  margin:8px 0;
+  padding:10px;
+  border-radius:12px;
+  position:relative;
+}
+
+.avatar {
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  margin-right:10px;
+  object-fit:cover;
+}
+
+.content {
+  flex:1;
+}
+
+.username {
+  font-weight:bold;
+  font-size:14px;
+}
+
+.text {
+  font-size:15px;
+}
+
+.copyBtn {
+  position:absolute;
+  right:10px;
+  top:5px;
+  cursor:pointer;
+  font-size:16px;
+}
+
+/* INPUT */
+#inputArea {
+  display:flex;
+  padding:10px;
+  background:#020617;
+}
+
+#inputArea input {
+  flex:1;
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <h2>Giriş Yap</h2>
+  <input id="username" placeholder="Kullanıcı adı">
+  <input type="file" id="avatarInput" accept="image/*">
+  <button onclick="login()">Gir</button>
+</div>
+
+<!-- CHAT -->
+<div id="chat">
+  <div id="messages"></div>
+
+  <div id="inputArea">
+    <input id="msgInput" placeholder="Mesaj yaz...">
+    <button onclick="sendMsg()">Gönder</button>
+  </div>
+</div>
+
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCefOeCoKgf39oXsGaT8z6whWNZBbiZmts",
+  authDomain: "papperreo.firebaseapp.com",
+  databaseURL: "https://papperreo-default-rtdb.firebaseio.com",
+  projectId: "papperreo",
+  storageBucket: "papperreo.firebasestorage.app",
+  messagingSenderId: "871859927536",
+  appId: "1:871859927536:web:fb4ad3052c5639f3048535"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+let username = "";
+let avatar = "";
+
+// LOGIN
+window.login = function() {
+  const nameInput = document.getElementById("username").value;
+  const file = document.getElementById("avatarInput").files[0];
+
+  if(!nameInput || !file){
+    alert("Bilgileri doldur!");
+    return;
+  }
+
+  username = nameInput;
+
+  const reader = new FileReader();
+  reader.onload = function(e){
+    avatar = e.target.result;
+
+    document.getElementById("login").style.display = "none";
+    document.getElementById("chat").style.display = "flex";
+
+    loadMessages();
+  };
+  reader.readAsDataURL(file);
+}
+
+// SEND MESSAGE
+window.sendMsg = function(){
+  const text = document.getElementById("msgInput").value;
+  if(!text) return;
+
+  push(ref(db, "messages"), {
+    username,
+    avatar,
+    text
+  });
+
+  document.getElementById("msgInput").value = "";
+}
+
+// LOAD MESSAGES
+function loadMessages(){
+  const msgDiv = document.getElementById("messages");
+
+  onChildAdded(ref(db, "messages"), data => {
+    const msg = data.val();
+
+    const div = document.createElement("div");
+    div.className = "msg";
+
+    div.innerHTML = `
+      <img src="${msg.avatar}" class="avatar">
+      <div class="content">
+        <div class="username">${msg.username}</div>
+        <div class="text">${msg.text}</div>
+      </div>
+      <div class="copyBtn">📋</div>
+    `;
+
+    // COPY
+    div.querySelector(".copyBtn").onclick = () => {
+      navigator.clipboard.writeText(msg.text);
+      alert("Kopyalandı!");
+    };
+
+    msgDiv.appendChild(div);
+    msgDiv.scrollTop = msgDiv.scrollHeight;
+  });
+}
+</script>
+
+</body>
+  </html>
